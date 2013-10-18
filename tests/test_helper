@@ -1,0 +1,13 @@
+#!/bin/sh
+
+test_init() {
+  if [ "$ZSH_NAME" != "" ] ; then
+    SHUNIT_PARENT=$1
+    setopt shwordsplit
+  fi
+}
+
+
+SHUNIT_PATH=$(dirname $(readlink -f $0))
+. $SHUNIT_PATH/../xml_parser.sh
+. $SHUNIT_PATH/shunit2

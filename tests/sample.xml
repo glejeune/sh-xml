@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<domain name="test">
+  <text>
+    &#xb6; Some Text
+  </text>
+  <!-- un commentaire -->
+  <property name='user' value="greg"/>
+  <property name="password" value =  "s3cr3t p4ss"></property>
+  <data>
+    avant <format>bla bla bla</format> après
+  </data>
+</domain>
