@@ -62,6 +62,30 @@ This function allow you to set the value of the given attribute. If the attribut
       set_attribute_value "password" "mYp4sSw0rD"
     }
 
+### `print_entity`
+
+This function allow you to print the current XML entity to stdout
+
+**Example**
+ 
+    print_xml() {
+       print_entity
+    }
+    parse_xml "print_xml" /path/to/sample.xml
+
+### `terminate_parser`
+
+Terminate parsing. The end of the XML file will not be read.
+
+**Example**
+
+    do_xml() {
+      if [ "$XML_PATH" = "/stop/reading/here" ] ; then
+        # You can either access all data for this entity
+        terminate_parser
+      end
+    }
+
 ## Tests
 
 This project use [shUnit2](https://code.google.com/p/shunit2/) to perform unit tests. Just run `make` to run the tests suite. All tests are in the `tests` directory. 

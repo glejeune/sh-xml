@@ -89,10 +89,13 @@ _read_dom() {
   # Read the XML file to find the next tag
   # The output is a string containing the XML entity and the following 
   # content, seperate by a ">"
+  local _TEMP_TEMP_XML_FILE=$(mktemp)
   XML_DATA=$(awk 'BEGIN { RS = "<" ; FS = ">" ; OFS=">"; }
   { printf "" > F }
   NR == 1 { getline ; print $1,$2"x" }
-  NR > 2 { printf "<"$0 >> F }' F=${_TEMP_XML_FILE} ${_TEMP_XML_FILE})
+  NR > 2 { printf "<"$0 >> F }' F=${_TEMP_TEMP_XML_FILE} ${_TEMP_XML_FILE})
+  cat $_TEMP_TEMP_XML_FILE > $_TEMP_XML_FILE
+  rm -f $_TEMP_TEMP_XML_FILE
   if [ ! -s ${_TEMP_XML_FILE} ]; then
     _XML_CONTINUE_READING=false
   fi
@@ -102,6 +105,8 @@ _read_dom() {
   XML_CONTENT=${XML_CONTENT%x}
 
   unset XML_COMMENT
+  unset _XML_ATTRIBUTES
+  unset _XML_ATTRIBUTES_FOR_PARSING
   XML_TAG_TYPE="UNKNOW"
   XML_TAG_NAME=${XML_ENTITY%% *}
   _XML_ATTRIBUTES=${XML_ENTITY#* }
@@ -184,16 +189,13 @@ parse_xml() {
 # 
 #     VALUE=$(get_attribute_value "name")
 get_attribute_value() {
-  exec 3>&1 >/dev/tty
-  local ATTRIBUT_NAME ATTRIBUT_VALUE
   ATTRIBUT_NAME=$1
-  ATTRIBUT_NAME=$(echo $ATTRIBUT_NAME | tr "-" "_")
 
-  # TODO: This failed if attribut name contains a dash. We MUST find a solution
-  eval local echo $_XML_ATTRIBUTES_FOR_PARSING
+  ATTRIBUT_VALUE=$(safesed "/ ${ATTRIBUT_NAME}=\"/s/.* ${ATTRIBUT_NAME}=\"\\([^\"]*\\)\" .*/\\\\1/;/ ${ATTRIBUT_NAME}=/s/.* ${ATTRIBUT_NAME}='\\([^']*\\)' .*/\\\\1/;/ ${ATTRIBUT_NAME}=/s/.* ${ATTRIBUT_NAME}=\\([^ ]*\\) .*/\\\\1/;" " $_XML_ATTRIBUTES_FOR_PARSING ")
+  if [ "${ATTRIBUT_VALUE}" = "${_XML_ATTRIBUTES_FOR_PARSING}" ] ; then
+    unset ATTRIBUT_VALUE
+  fi
 
-  ATTRIBUT_VALUE=$(eval echo \$$ATTRIBUT_NAME)
-  exec >&3
   echo "$ATTRIBUT_VALUE"
 }
 
@@ -210,8 +212,8 @@ get_attribute_value() {
 #       echo "attribut name exist"
 #     fi
 has_attribute() {
-  local VALUE=$(get_attribute_value $1)
-  if [ $VALUE ] ; then
+  local VALUE="$(get_attribute_value $1)"
+  if [ "$VALUE" ] ; then
     return 1
   else
     return 0
@@ -273,4 +275,9 @@ print_entity() {
     fi
   fi
   printf ">$XML_CONTENT"
+}
+
+# Terminate parsing. The end of the XML file will not be read.
+terminate_parser() {
+  _XML_CONTINUE_READING=false
 }
