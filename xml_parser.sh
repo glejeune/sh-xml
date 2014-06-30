@@ -76,6 +76,7 @@ _close_xml() {
 _read_dom() {
   local XML_DATA 
   local XML_TAG_NAME_FIRST_CHAR 
+  local XML_TAG_NAME_FIRST_THREE_CHARS 
   local XML_TAG_NAME_LENGTH 
   local XML_TAG_NAME_WITHOUT_FIRST_CHAR
   local XML_LAST_CHAR_OF_ATTRIBUTES
@@ -114,10 +115,11 @@ _read_dom() {
 
   # Determines the type of tag, according to the first or last character of the XML entity
   XML_TAG_NAME_FIRST_CHAR=$(echo $XML_TAG_NAME | awk  '{ string=substr($0, 1, 1); print string; }' )
+  XML_TAG_NAME_FIRST_THREE_CHARS=$(echo $XML_TAG_NAME | awk  '{ string=substr($0, 1, 3); print string; }' )
   XML_TAG_NAME_LENGTH=${#XML_TAG_NAME}
   XML_TAG_NAME_WITHOUT_FIRST_CHAR=$(echo $XML_TAG_NAME | awk -v var=$XML_TAG_NAME_LENGTH '{ string=substr($0, 2, var - 1); print string; }' )
   # The first character is a "!", the tag is a comment
-  if [ $XML_TAG_NAME_FIRST_CHAR = "!" ] ; then
+  if [ $XML_TAG_NAME_FIRST_THREE_CHARS = "!--" ] ; then
     XML_TAG_TYPE="COMMENT"
     unset _XML_ATTRIBUTES
     unset XML_TAG_NAME
