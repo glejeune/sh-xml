@@ -38,8 +38,9 @@ safesed () {
 #  * 1: path of the XML file
 # Return: nothing
 _init_xml() {
+  XML_SPACE=0
   local XML_FILE=${1}
-  _TEMP_XML_FILE=$(mktemp)
+  _TEMP_XML_FILE=$(mktemp -t xml_p.XXXXXX)
   _XML_CONTINUE_READING=true
   cat $XML_FILE > $_TEMP_XML_FILE
   XML_PATH=""
@@ -90,7 +91,7 @@ _read_dom() {
   # Read the XML file to find the next tag
   # The output is a string containing the XML entity and the following 
   # content, seperate by a ">"
-  local _TEMP_TEMP_XML_FILE=$(mktemp)
+  local _TEMP_TEMP_XML_FILE=$(mktemp -t xml_p_p.XXXXXX)
   XML_DATA=$(awk 'BEGIN { RS = "<" ; FS = ">" ; OFS=">"; }
   { printf "" > F }
   NR == 1 { getline ; print $1,$2"x" }
@@ -101,8 +102,8 @@ _read_dom() {
     _XML_CONTINUE_READING=false
   fi
 
-  XML_ENTITY=$(echo $XML_DATA | cut -d\> -f1)
-  XML_CONTENT=$(printf "$XML_DATA" | cut -d\> -f2-)
+  XML_ENTITY=$(echo $XML_DATA | tr -d '\r' | paste - | cut -d\> -f1)
+  XML_CONTENT=$(echo $XML_DATA | tr -d '\r' | cut -d\> -f2- | sed -e 's/^ *//' -e 's/ *$//')
   XML_CONTENT=${XML_CONTENT%x}
 
   unset XML_COMMENT
@@ -134,6 +135,10 @@ _read_dom() {
     # The first character is a "?", the tag is an instruction tag
     elif [ "$XML_TAG_NAME_FIRST_CHAR" = "?" ]; then
       XML_TAG_TYPE="INSTRUCTION"
+      XML_TAG_NAME=$XML_TAG_NAME_WITHOUT_FIRST_CHAR
+    # The first character is a "!", the tag is an entity
+    elif [ "$XML_TAG_NAME_FIRST_CHAR" = "!" ]; then
+      XML_TAG_TYPE="ENTITY"
       XML_TAG_NAME=$XML_TAG_NAME_WITHOUT_FIRST_CHAR
     # The tag is an open tag
     else
@@ -193,7 +198,7 @@ parse_xml() {
 get_attribute_value() {
   ATTRIBUT_NAME=$1
 
-  ATTRIBUT_VALUE=$(safesed "/ ${ATTRIBUT_NAME}=\"/s/.* ${ATTRIBUT_NAME}=\"\\([^\"]*\\)\" .*/\\\\1/;/ ${ATTRIBUT_NAME}=/s/.* ${ATTRIBUT_NAME}='\\([^']*\\)' .*/\\\\1/;/ ${ATTRIBUT_NAME}=/s/.* ${ATTRIBUT_NAME}=\\([^ ]*\\) .*/\\\\1/;" " $_XML_ATTRIBUTES_FOR_PARSING ")
+  ATTRIBUT_VALUE=$(safesed "/ ${ATTRIBUT_NAME}=\"/s/.* ${ATTRIBUT_NAME}=\"\\([^\"]*\\)\" .*/\\\\1/;/ ${ATTRIBUT_NAME}=/s/.* ${ATTRIBUT_NAME}='\\([^']*\\)' .*/\\\\1/;/ ${ATTRIBUT_NAME}=/s/.* ${ATTRIBUT_NAME}=\\([^ ]*\\) .*/\\\\1/;" " $_XML_ATTRIBUTES_FOR_PARSING " | sed -e 's/^ *//' -e 's/ *$//')
   if [ "${ATTRIBUT_VALUE}" = "${_XML_ATTRIBUTES_FOR_PARSING}" ] ; then
     unset ATTRIBUT_VALUE
   fi
@@ -244,6 +249,10 @@ set_attribute_value() {
   _XML_ATTRIBUTES_FOR_PARSING=$(safesed "s|[[:space:]]*=[[:space:]]*|=|g" "${_XML_ATTRIBUTES}")
 }
 
+_print_space() {
+  [ "$XML_SPACE" -gt "0" ] && printf "$(head -c $XML_SPACE < /dev/zero| tr '\0' ' ')"
+}
+
 # This function allow you to print the current XML entity to stdout
 # Parameters: none
 # Type: public
@@ -256,27 +265,52 @@ set_attribute_value() {
 #     parse_xml "print_xml" /path/to/sample.xml
 print_entity() {
   if [ "$XML_TAG_TYPE" = "COMMENT" ] ; then
+    _print_space
     printf "<!-- %s --" "$XML_COMMENT"
   elif [ "$XML_TAG_TYPE" = "INSTRUCTION" ] ; then
+    _print_space
     printf "<?%s" "$XML_TAG_NAME"
     if [ "$_XML_ATTRIBUTES" != "" ] ; then
       printf " %s" "$_XML_ATTRIBUTES"
     fi
+  elif [ "$XML_TAG_TYPE" = "ENTITY" ] ; then
+    _print_space
+    printf "<!%s" "$XML_TAG_NAME"
+    if [ "$_XML_ATTRIBUTES" != "" ] ; then
+      printf " %s" "$_XML_ATTRIBUTES"
+    fi
   elif [ "$XML_TAG_TYPE" = "EMPTY" ] ; then
+    _print_space
     printf "<%s" "$XML_TAG_NAME"
     if [ "$_XML_ATTRIBUTES" != "" ] ; then
       printf " %s" "$_XML_ATTRIBUTES"
     fi
     printf "/"
   elif [ "$XML_TAG_TYPE" = "CLOSE" ] ; then
+    XML_SPACE=$(expr $XML_SPACE - 2)
+    _print_space
     printf "<%s" "$XML_TAG_NAME"
+  elif [ "$XML_TAG_TYPE" = "OPEN" ] ; then
+    _print_space
+    printf "<%s" "$XML_TAG_NAME"
+    if [ "$_XML_ATTRIBUTES" != "" ] ; then
+      printf " %s" "$_XML_ATTRIBUTES"
+    fi
+    XML_SPACE=$(expr $XML_SPACE + 2)
   else
+    _print_space
     printf "<%s" "$XML_TAG_NAME"
     if [ "$_XML_ATTRIBUTES" != "" ] ; then
       printf " %s" "$_XML_ATTRIBUTES"
     fi
   fi
-  printf ">$XML_CONTENT"
+  printf ">\n"
+  if [ ! "x$XML_CONTENT" = "x" ] ; then
+    XML_SPACE=$(expr $XML_SPACE + 2)
+    _print_space
+    XML_SPACE=$(expr $XML_SPACE - 2)
+    printf "$XML_CONTENT\n"
+  fi
 }
 
 # Terminate parsing. The end of the XML file will not be read.

@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TEST_PATH=$(dirname $(readlink -f $0))
+TEST_PATH=$(dirname $0)
 
 
 # -- Tests
@@ -17,6 +17,7 @@ do_xml_test_attr() {
     NEW_PASSWORD=$(get_attribute_value "value")
   fi
 }
+
 testAttr() {
   OLD_PASSWORD="-"
   NEW_PASSWORD="-"

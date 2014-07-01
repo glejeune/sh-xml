@@ -1,6 +1,6 @@
 #!/bin/sh
 
-TEST_PATH=$(dirname $(readlink -f $0))
+TEST_PATH=$(dirname $0)
 
 
 # -- Tests

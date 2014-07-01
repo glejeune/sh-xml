@@ -8,6 +8,6 @@ test_init() {
 }
 
 
-SHUNIT_PATH=$(dirname $(readlink -f $0))
+SHUNIT_PATH=$(dirname $0)
 . $SHUNIT_PATH/../xml_parser.sh
 . $SHUNIT_PATH/shunit2
